@@ -1,0 +1,12 @@
+{
+  "name": "qris-cashify-payment",
+  "version": "1.0.0",
+  "description": "Fullstack QRIS payment using Cashify and Vercel",
+  "main": "api/create-payment.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "axios": "^1.6.8"
+  }
+}
