@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran QRIS</title>
+    <!-- Library QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .btn {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.875rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* Area QR Code */
+        #payment-area {
+            display: none;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed var(--border);
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .countdown {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background-color: #fef3c7;
+            color: #d97706;
+            margin-bottom: 1rem;
+        }
+
+        .status-badge.paid {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+
+        .message {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        #error-msg {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        /* Tampilan Berhasil */
+        #success-area {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            color: var(--success);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1 class="title">Pembayaran QRIS</h1>
+        <p class="subtitle">Bayar mudah menggunakan dompet digital favoritmu</p>
+
+        <div id="input-area">
+            <div class="input-group">
+                <label for="amount">Nominal Pembayaran (Rp)</label>
+                <input type="number" id="amount" placeholder="Minimal 1000" min="1000">
+                <div id="error-msg"></div>
+            </div>
+            <button id="generate-btn" class="btn" onclick="generateQR()">Generate QR Code</button>
+        </div>
+
+        <div id="payment-area">
+            <div class="status-badge" id="payment-status">Menunggu Pembayaran...</div>
+            <div class="countdown" id="countdown-timer">15:00</div>
+            <p class="message">Scan QR Code di bawah ini:</p>
+            <div id="qrcode"></div>
+        </div>
+
+        <div id="success-area">
+            <div class="success-icon">✓</div>
+            <h2 style="color: var(--success); margin-bottom: 0.5rem;">Pembayaran Berhasil!</h2>
+            <p class="message">Terima kasih, pembayaran Anda telah kami terima.</p>
+            <button class="btn" style="margin-top: 1.5rem;" onclick="location.reload()">Buat Transaksi Baru</button>
+        </div>
+    </div>
+
+    <script>
+        let countdownInterval;
+        let pollingInterval;
+        let currentTransactionId = null;
+
+        async function generateQR() {
+            const amountInput = document.getElementById('amount');
+            const errorMsg = document.getElementById('error-msg');
+            const generateBtn = document.getElementById('generate-btn');
+            const amount = parseInt(amountInput.value);
+
+            // Reset Error
+            errorMsg.style.display = 'none';
+
+            // Validasi Input
+            if (!amount || amount < 1000) {
+                errorMsg.innerText = "Nominal harus minimal Rp 1.000";
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Set Loading State
+            generateBtn.disabled = true;
+            generateBtn.innerText = "Memproses...";
+
+            try {
+                // Call API Backend Vercel
+                const response = await fetch('/api/create-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Gagal membuat transaksi');
+                }
+
+                currentTransactionId = data.transactionId;
+                
+                // Sembunyikan Input, Tampilkan Area QR
+                document.getElementById('input-area').style.display = 'none';
+                document.getElementById('payment-area').style.display = 'block';
+
+                // Buat QR Code
+                document.getElementById('qrcode').innerHTML = ""; // Bersihkan QR sebelumnya
+                new QRCode(document.getElementById("qrcode"), {
+                    text: data.qrString,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+
+                // Mulai timer dan polling
+                startCountdown(15);
+                startPolling();
+
+            } catch (error) {
+                errorMsg.innerText = error.message;
+                errorMsg.style.display = 'block';
+                generateBtn.disabled = false;
+                generateBtn.innerText = "Generate QR Code";
+            }
+        }
+
+        function startCountdown(minutes) {
+            let time = minutes * 60;
+            const timerDisplay = document.getElementById('countdown-timer');
+
+            countdownInterval = setInterval(() => {
+                const min = Math.floor(time / 60);
+                let sec = time % 60;
+                sec = sec < 10 ? '0' + sec : sec;
+
+                timerDisplay.innerText = `${min}:${sec}`;
+
+                if (time <= 0) {
+                    clearInterval(countdownInterval);
+                    stopPolling();
+                    timerDisplay.innerText = "Kedaluwarsa";
+                    timerDisplay.style.color = "var(--text-muted)";
+                    document.getElementById('qrcode').style.opacity = "0.2";
+                    document.getElementById('payment-status').innerText = "Waktu Habis";
+                }
+                time--;
+            }, 1000);
+        }
+
+        function startPolling() {
+            // Cek status setiap 10 detik
+            pollingInterval = setInterval(async () => {
+                if (!currentTransactionId) return;
+
+                try {
+                    const response = await fetch(`/api/check-status?transactionId=${currentTransactionId}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const status = data.status.toUpperCase();
+                        
+                        // Periksa apakah status sudah dibayar
+                        if (status === 'PAID' || status === 'SUCCESS' || status === 'SETTLED') {
+                            handlePaymentSuccess();
+                        } else if (status === 'EXPIRED') {
+                            clearInterval(countdownInterval);
+                            stopPolling();
+                            document.getElementById('countdown-timer').innerText = "Kedaluwarsa";
+                            document.getElementById('payment-status').innerText = "Kadaluwarsa";
+                        }
+                    }
+                } catch (error) {
+                    console.error("Gagal mengecek status", error);
+                }
+            }, 10000); // 10000 ms = 10 detik
+        }
+
+        function stopPolling() {
+            if (pollingInterval) clearInterval(pollingInterval);
+        }
+
+        function handlePaymentSuccess() {
+            stopPolling();
+            clearInterval(countdownInterval);
+            
+            // Sembunyikan area QR, tampilkan Sukses
+            document.getElementById('payment-area').style.display = 'none';
+            document.getElementById('success-area').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
